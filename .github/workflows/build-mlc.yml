@@ -1,0 +1,68 @@
+name: Build MLC APK
+
+# Run it by hand: Actions tab -> "Build MLC APK" -> "Run workflow"
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 345
+    env:
+      UPSTREAM_COMMIT: "8281580"
+    steps:
+      - name: Get this repo (contains the rebrand patch)
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
+          df -h /
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y automake autopoint build-essential cmake libtool libtool-bin \
+            patch pkg-config protobuf-compiler ragel subversion unzip git wget curl bzip2 \
+            python3 gettext yasm nasm flex bison gperf m4 autoconf
+
+      - name: Install Android SDK + NDK r21e
+        run: |
+          export ANDROID_SDK="$ANDROID_HOME"
+          yes | "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" "ndk;21.4.7075529" "cmake;3.22.1"
+
+      - name: Get VLC for Android source and apply MLC rebrand
+        run: |
+          git clone https://github.com/videolan/vlc-android mlc
+          git -C mlc checkout "$UPSTREAM_COMMIT"
+          git -C mlc apply --whitespace=nowarn "$GITHUB_WORKSPACE/mlc-rebrand.patch"
+
+      - name: Create signing key
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android \
+            -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+            -validity 10000 -dname "CN=MLC, O=MLC, C=US"
+
+      - name: Build MLC (libVLC + app, arm64)
+        working-directory: mlc
+        run: |
+          export ANDROID_SDK="$ANDROID_HOME"
+          export ANDROID_NDK="$ANDROID_HOME/ndk/21.4.7075529"
+          ./buildsystem/compile.sh -a arm64 -t -r
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MLC-apk
+          path: |
+            mlc/application/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
