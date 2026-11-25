@@ -32,12 +32,12 @@ jobs:
             patch pkg-config protobuf-compiler ragel subversion unzip git wget curl bzip2 \
             python3 gettext yasm nasm flex bison gperf m4 autoconf
 
-      - name: Install Android SDK + NDK r21e
+      - name: Install Android SDK + NDK r27c
         run: |
           export ANDROID_SDK="$ANDROID_HOME"
           yes | "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-36" "build-tools;36.0.0" "ndk;21.4.7075529" "cmake;3.22.1"
+            "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
 
       - name: Get VLC for Android source and apply MLC rebrand
         run: |
@@ -61,7 +61,7 @@ jobs:
         working-directory: mlc
         run: |
           export ANDROID_SDK="$ANDROID_HOME"
-          export ANDROID_NDK="$ANDROID_HOME/ndk/21.4.7075529"
+          export ANDROID_NDK="$ANDROID_HOME/ndk/27.2.12479018"
           ./buildsystem/compile.sh -a arm64 -t -r
 
       - name: Upload APK
