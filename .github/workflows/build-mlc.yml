@@ -45,6 +45,11 @@ jobs:
           git -C mlc checkout "$UPSTREAM_COMMIT"
           git -C mlc apply --whitespace=nowarn "$GITHUB_WORKSPACE/mlc-rebrand.patch"
 
+      - name: Set git identity (VLC build applies patches with git)
+        run: |
+          git config --global user.email "build@mlc.local"
+          git config --global user.name "MLC Build"
+
       - name: Create signing key
         run: |
           mkdir -p ~/.android
